@@ -1,16 +1,3 @@
-// Profecias de exemplo para o índice da página /profecias (árvore AVL).
-//
-// A funcionalidade roda toda localmente: estas profecias são o ponto de
-// partida da árvore, e as registradas na aba "Gerar" entram nela só em
-// memória. Nada aqui vem do Supabase nem é gravado nele.
-//
-// Os campos têm os mesmos nomes das colunas da tabela `profecias`, para os
-// componentes da página tratarem uma profecia local e uma do banco do mesmo
-// jeito. Os textos foram gerados com `gerarProfecia`
-// (src/lib/prophecyTemplate.js). Os usernames incluem acentos, maiúsculas
-// ("Ana" e "ana" coexistem) e prefixos em comum ("filho-de-", "ana"), que são
-// os casos que a chave normalizada e a busca por prefixo precisam tratar.
-
 export const PROFECIAS_LOCAIS = [
   {
     username: 'filho-de-atena-23',

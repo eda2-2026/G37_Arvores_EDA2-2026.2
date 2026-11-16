@@ -1,80 +1,31 @@
-/**
- * Árvore AVL — estrutura base.
- *
- * Convenções usadas em todo o arquivo:
- * - Altura: um nó folha tem altura 1; uma subárvore vazia (null) tem altura 0.
- * - Fator de balanceamento = altura(esquerda) − altura(direita).
- *   Positivo: o nó pende para a esquerda. Negativo: pende para a direita.
- *   Numa AVL válida, todo nó tem fator −1, 0 ou 1.
- * - Tamanho: quantidade de nós da subárvore, contando o próprio nó. É o que
- *   permite achar o k-ésimo elemento e a posição de uma chave em O(log n).
- *
- * As funções de nó (alturaDe, tamanhoDe, fatorBalanceamento, atualizar e as
- * rotações) ficam fora da classe para poderem ser testadas e reaproveitadas
- * pelo visualizador sem depender de uma árvore inteira.
- */
-
 export class NoAVL {
-  /**
-   * @param {*} chave
-   * @param {*} valor
-   */
   constructor(chave, valor) {
     this.chave = chave;
     this.valor = valor;
-    /** @type {NoAVL | null} */
     this.esquerda = null;
-    /** @type {NoAVL | null} */
     this.direita = null;
     this.altura = 1;
     this.tamanho = 1;
   }
 }
 
-/** @param {NoAVL | null} no */
 export function alturaDe(no) {
   return no ? no.altura : 0;
 }
 
-/** @param {NoAVL | null} no */
 export function tamanhoDe(no) {
   return no ? no.tamanho : 0;
 }
 
-/** @param {NoAVL | null} no */
 export function fatorBalanceamento(no) {
   return no ? alturaDe(no.esquerda) - alturaDe(no.direita) : 0;
 }
 
-/**
- * Recalcula a altura e o tamanho de `no` a partir dos filhos. Os filhos
- * precisam estar atualizados, por isso é sempre chamada de baixo para cima.
- *
- * @param {NoAVL} no
- */
 export function atualizar(no) {
   no.altura = 1 + Math.max(alturaDe(no.esquerda), alturaDe(no.direita));
   no.tamanho = 1 + tamanhoDe(no.esquerda) + tamanhoDe(no.direita);
 }
 
-/**
- * Rotação simples à direita em torno de `y`. Corrige um nó que pende para a
- * esquerda (caso LL). Combinada com uma rotação à esquerda no filho, resolve
- * o caso LR.
- *
- *         y                x
- *        / \              / \
- *       x   C    ──►     A   y
- *      / \                  / \
- *     A   B                B   C
- *
- * A sequência em ordem (A, x, B, y, C) não muda; só a forma da árvore muda.
- * Devolve a nova raiz da subárvore (`x`), que quem chamou precisa religar
- * ao pai.
- *
- * @param {NoAVL} y
- * @returns {NoAVL}
- */
 export function rotacaoDireita(y) {
   const x = y.esquerda;
   if (!x) throw new Error('rotacaoDireita: o nó não tem filho à esquerda');
@@ -82,26 +33,11 @@ export function rotacaoDireita(y) {
   y.esquerda = x.direita;
   x.direita = y;
 
-  // y desceu para baixo de x, então é atualizado primeiro.
   atualizar(y);
   atualizar(x);
   return x;
 }
 
-/**
- * Rotação simples à esquerda em torno de `x`. Espelho de `rotacaoDireita`:
- * corrige um nó que pende para a direita (caso RR) e, combinada com uma
- * rotação à direita no filho, resolve o caso RL.
- *
- *       x                    y
- *      / \                  / \
- *     A   y      ──►       x   C
- *        / \              / \
- *       B   C            A   B
- *
- * @param {NoAVL} x
- * @returns {NoAVL}
- */
 export function rotacaoEsquerda(x) {
   const y = x.direita;
   if (!y) throw new Error('rotacaoEsquerda: o nó não tem filho à direita');
@@ -109,33 +45,11 @@ export function rotacaoEsquerda(x) {
   x.direita = y.esquerda;
   y.esquerda = x;
 
-  // x desceu para baixo de y, então é atualizado primeiro.
   atualizar(x);
   atualizar(y);
   return y;
 }
 
-/**
- * Corrige um nó depois de uma inserção ou remoção numa de suas subárvores.
- * Atualiza altura e tamanho e, se o fator de balanceamento saiu de −1..1,
- * aplica a rotação do caso correspondente:
- *
- * | Fator do nó | Fator do filho mais alto | Caso | Correção                                  |
- * |-------------|--------------------------|------|-------------------------------------------|
- * | > 1         | esquerdo ≥ 0             | LL   | rotação à direita no nó                   |
- * | > 1         | esquerdo < 0             | LR   | à esquerda no filho, depois à direita no nó |
- * | < −1        | direito ≤ 0              | RR   | rotação à esquerda no nó                  |
- * | < −1        | direito > 0              | RL   | à direita no filho, depois à esquerda no nó |
- *
- * Filho com fator 0 só aparece na remoção; nesse caso a rotação simples basta.
- *
- * Devolve a nova raiz da subárvore. Se `rotacoes` for passado, registra nele
- * o caso aplicado e a chave do nó que estava desbalanceado.
- *
- * @param {NoAVL} no
- * @param {Array<{caso: 'LL' | 'RR' | 'LR' | 'RL', chave: *}>} [rotacoes]
- * @returns {NoAVL}
- */
 export function balancear(no, rotacoes) {
   atualizar(no);
   const fator = fatorBalanceamento(no);
@@ -163,60 +77,34 @@ export function balancear(no, rotacoes) {
   return no;
 }
 
-/**
- * Nó com a menor chave da subárvore: o mais à esquerda. O(altura).
- *
- * @param {NoAVL | null} no
- * @returns {NoAVL | null}
- */
 export function minimoNo(no) {
   if (!no) return null;
   while (no.esquerda) no = no.esquerda;
   return no;
 }
 
-/**
- * Nó com a maior chave da subárvore: o mais à direita. O(altura).
- *
- * @param {NoAVL | null} no
- * @returns {NoAVL | null}
- */
 export function maximoNo(no) {
   if (!no) return null;
   while (no.direita) no = no.direita;
   return no;
 }
 
-/** @param {NoAVL | null} no */
 function entrada(no) {
   return no ? { chave: no.chave, valor: no.valor } : null;
 }
 
-/** Empilha `no` e todo o caminho mais à esquerda abaixo dele. */
 function empilharEsquerda(no, pilha) {
   for (; no; no = no.esquerda) pilha.push(no);
 }
 
-/**
- * Continua um percurso em ordem a partir de uma pilha de nós pendentes cujo
- * topo é sempre o menor nó ainda não visitado.
- */
 function* continuarEmOrdem(pilha) {
   while (pilha.length > 0) {
     const no = pilha.pop();
     yield entrada(no);
-    // Depois do nó vêm os da subárvore direita, a partir do menor deles.
     empilharEsquerda(no.direita, pilha);
   }
 }
 
-/**
- * Comparador padrão: ordena com `<` e `>`. Para strings, isso é a ordem dos
- * códigos de caractere (não `localeCompare`), a mesma que a busca por
- * prefixo vai assumir.
- *
- * @returns {number} negativo se a < b, zero se iguais, positivo se a > b
- */
 export function compararPadrao(a, b) {
   if (a < b) return -1;
   if (a > b) return 1;
@@ -224,28 +112,16 @@ export function compararPadrao(a, b) {
 }
 
 export class ArvoreAVL {
-  /**
-   * @param {(a: *, b: *) => number} [comparar] negativo se a < b, zero se
-   *   iguais, positivo se a > b.
-   */
   constructor(comparar = compararPadrao) {
     this.comparar = comparar;
-    /** @type {NoAVL | null} */
     this.raiz = null;
-    /**
-     * Rotações aplicadas na última operação que alterou a árvore, do nó mais
-     * baixo para o mais alto. Usado pelo visualizador.
-     * @type {Array<{caso: 'LL' | 'RR' | 'LR' | 'RL', chave: *}>}
-     */
     this.ultimasRotacoes = [];
   }
 
-  /** Altura da árvore (0 se vazia). O(1). */
   altura() {
     return alturaDe(this.raiz);
   }
 
-  /** Quantidade de chaves guardadas. O(1). */
   tamanho() {
     return tamanhoDe(this.raiz);
   }
@@ -254,13 +130,6 @@ export class ArvoreAVL {
     return this.raiz === null;
   }
 
-  /**
-   * Insere `chave` com `valor` e rebalanceia o caminho de volta até a raiz.
-   * As chaves são únicas: se a chave já existe, só o valor é trocado.
-   * O(log n).
-   *
-   * @returns {boolean} true se a chave era nova, false se só trocou o valor
-   */
   inserir(chave, valor) {
     this.ultimasRotacoes = [];
     const tamanhoAntes = this.tamanho();
@@ -268,10 +137,6 @@ export class ArvoreAVL {
     return this.tamanho() > tamanhoAntes;
   }
 
-  /**
-   * @param {NoAVL | null} no
-   * @returns {NoAVL} a nova raiz desta subárvore
-   */
   #inserirEm(no, chave, valor) {
     if (!no) return new NoAVL(chave, valor);
 
@@ -287,14 +152,6 @@ export class ArvoreAVL {
     return balancear(no, this.ultimasRotacoes);
   }
 
-  /**
-   * Remove `chave` e rebalanceia o caminho de volta até a raiz. Diferente da
-   * inserção, que corrige no máximo um nó, uma remoção pode encurtar a
-   * subárvore depois da rotação e exigir rotações em vários níveis, até
-   * O(log n) delas. O(log n).
-   *
-   * @returns {boolean} true se a chave existia e foi removida
-   */
   remover(chave) {
     this.ultimasRotacoes = [];
     const tamanhoAntes = this.tamanho();
@@ -302,10 +159,6 @@ export class ArvoreAVL {
     return this.tamanho() < tamanhoAntes;
   }
 
-  /**
-   * @param {NoAVL | null} no
-   * @returns {NoAVL | null} a nova raiz desta subárvore
-   */
   #removerEm(no, chave) {
     if (!no) return null;
 
@@ -315,14 +168,9 @@ export class ArvoreAVL {
     } else if (cmp > 0) {
       no.direita = this.#removerEm(no.direita, chave);
     } else {
-      // Nenhum ou um filho: o filho (ou null) toma o lugar do nó. A
-      // subárvore dele já está balanceada; quem rebalanceia é o pai.
       if (!no.esquerda) return no.direita;
       if (!no.direita) return no.esquerda;
 
-      // Dois filhos: o sucessor (menor chave da subárvore direita) toma o
-      // lugar do nó e é removido de onde estava. Ele tem no máximo um filho
-      // (o direito), então essa segunda remoção cai no caso acima.
       const sucessor = minimoNo(no.direita);
       no.chave = sucessor.chave;
       no.valor = sucessor.valor;
@@ -332,104 +180,51 @@ export class ArvoreAVL {
     return balancear(no, this.ultimasRotacoes);
   }
 
-  /**
-   * Busca exata. O(log n).
-   *
-   * @returns {*} o valor guardado na chave, ou undefined se ela não existe
-   */
   buscar(chave) {
     const no = this.#buscarNo(chave);
     return no ? no.valor : undefined;
   }
 
-  /** Se a chave existe na árvore. O(log n). */
   contem(chave) {
     return this.#buscarNo(chave) !== null;
   }
 
-  /**
-   * Menor chave da árvore. O(log n).
-   *
-   * @returns {{chave: *, valor: *} | null} null se a árvore está vazia
-   */
   minimo() {
     return entrada(minimoNo(this.raiz));
   }
 
-  /**
-   * Maior chave da árvore. O(log n).
-   *
-   * @returns {{chave: *, valor: *} | null} null se a árvore está vazia
-   */
   maximo() {
     return entrada(maximoNo(this.raiz));
   }
 
-  /**
-   * Percorre as entradas em ordem crescente de chave (esquerda, nó, direita).
-   * Usa uma pilha explícita em vez de recursão, então quem consome pode parar
-   * no meio (ex: `for...of` com `break`) sem pagar pelo resto da árvore.
-   * O(n) para percorrer tudo.
-   *
-   * @returns {Generator<{chave: *, valor: *}>}
-   */
   *percorrerEmOrdem() {
     const pilha = [];
     empilharEsquerda(this.raiz, pilha);
     yield* continuarEmOrdem(pilha);
   }
 
-  /**
-   * Todas as entradas em ordem crescente de chave. O(n).
-   *
-   * @returns {Array<{chave: *, valor: *}>}
-   */
   emOrdem() {
     return [...this.percorrerEmOrdem()];
   }
 
-  /** Permite `for (const { chave, valor } of arvore)`, em ordem. */
   [Symbol.iterator]() {
     return this.percorrerEmOrdem();
   }
 
-  /**
-   * Percorre em ordem crescente a partir da primeira chave ≥ `chave`, que não
-   * precisa existir na árvore. A descida inicial empilha só os nós que ainda
-   * vão ser visitados, então começar no meio custa O(log n), e cada passo
-   * seguinte custa O(1) amortizado.
-   *
-   * @returns {Generator<{chave: *, valor: *}>}
-   */
   *percorrerAPartirDe(chave) {
     const pilha = [];
     let no = this.raiz;
     while (no) {
       if (this.comparar(no.chave, chave) >= 0) {
-        // no ≥ chave: entra no percurso, e à esquerda ainda pode haver
-        // chaves menores que ele, mas ≥ chave.
         pilha.push(no);
         no = no.esquerda;
       } else {
-        // no < chave: ele e toda a subárvore esquerda ficam de fora.
         no = no.direita;
       }
     }
     yield* continuarEmOrdem(pilha);
   }
 
-  /**
-   * Entradas cujas chaves começam com `prefixo`, em ordem, até `limite`.
-   *
-   * Supõe chaves string e o comparador padrão. Nessa ordem, as chaves com um
-   * mesmo prefixo ficam todas juntas e começam a partir do próprio prefixo,
-   * então basta achar a primeira chave ≥ prefixo e andar em ordem até a
-   * primeira que não começa com ele. O(log n + k), com k = resultados.
-   *
-   * @param {string} prefixo
-   * @param {number} [limite] máximo de resultados (sem limite por padrão)
-   * @returns {Array<{chave: string, valor: *}>}
-   */
   buscarPorPrefixo(prefixo, limite = Infinity) {
     const resultado = [];
     if (limite <= 0) return resultado;
@@ -442,15 +237,6 @@ export class ArvoreAVL {
     return resultado;
   }
 
-  /**
-   * k-ésima menor entrada, com k começando em 0 (`kEsimo(0)` é o mínimo).
-   * Usa o tamanho guardado em cada nó: se a subárvore esquerda tem `e` nós,
-   * o próprio nó é o de índice `e`; um k menor está à esquerda, e um maior
-   * está à direita, com índice k − e − 1 lá dentro. O(log n).
-   *
-   * @param {number} k
-   * @returns {{chave: *, valor: *} | null} null se k está fora de 0..n−1
-   */
   kEsimo(k) {
     if (!Number.isInteger(k) || k < 0 || k >= this.tamanho()) return null;
 
@@ -469,13 +255,6 @@ export class ArvoreAVL {
     return null;
   }
 
-  /**
-   * Quantas chaves da árvore são menores que `chave`, que não precisa
-   * existir. Se existir, é o índice dela na ordem, e `kEsimo(posicao(c))`
-   * devolve `c`. O(log n).
-   *
-   * @returns {number}
-   */
   posicao(chave) {
     let menores = 0;
     let no = this.raiz;
@@ -485,7 +264,6 @@ export class ArvoreAVL {
       if (cmp < 0) {
         no = no.esquerda;
       } else {
-        // O nó e toda a subárvore esquerda dele são menores que a chave.
         menores += tamanhoDe(no.esquerda) + 1;
         no = no.direita;
       }
@@ -493,18 +271,11 @@ export class ArvoreAVL {
     return menores;
   }
 
-  /**
-   * Maior entrada com chave estritamente menor que `chave`, que não precisa
-   * existir. O(log n).
-   *
-   * @returns {{chave: *, valor: *} | null} null se não há chave menor
-   */
   antecessor(chave) {
     let candidato = null;
     let no = this.raiz;
     while (no) {
       if (this.comparar(no.chave, chave) < 0) {
-        // Serve, mas pode haver um maior (ainda < chave) à direita.
         candidato = no;
         no = no.direita;
       } else {
@@ -514,18 +285,11 @@ export class ArvoreAVL {
     return entrada(candidato);
   }
 
-  /**
-   * Menor entrada com chave estritamente maior que `chave`, que não precisa
-   * existir. O(log n).
-   *
-   * @returns {{chave: *, valor: *} | null} null se não há chave maior
-   */
   sucessor(chave) {
     let candidato = null;
     let no = this.raiz;
     while (no) {
       if (this.comparar(no.chave, chave) > 0) {
-        // Serve, mas pode haver um menor (ainda > chave) à esquerda.
         candidato = no;
         no = no.esquerda;
       } else {
@@ -535,12 +299,6 @@ export class ArvoreAVL {
     return entrada(candidato);
   }
 
-  /**
-   * Desce da raiz comparando a chave: menor vai para a esquerda, maior para
-   * a direita. Cada comparação descarta uma subárvore inteira.
-   *
-   * @returns {NoAVL | null}
-   */
   #buscarNo(chave) {
     let no = this.raiz;
     while (no) {
