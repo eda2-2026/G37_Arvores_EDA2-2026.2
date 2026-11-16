@@ -1,24 +1,37 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import GreekFrame from '../components/GreekFrame';
 import LaurelDivider from '../components/LaurelDivider';
+import ArquivoProfecias from '../components/profecias/ArquivoProfecias';
+import BuscaProfecia from '../components/profecias/BuscaProfecia';
+import VisualizadorArvore from '../components/profecias/VisualizadorArvore';
+import {
+  CardShell,
+  ProfeciaDestaque,
+  botaoClass,
+  botaoSecundarioClass,
+  inputClass,
+  labelClass,
+} from '../components/profecias/ui';
 import { GODS } from '../data/gods';
 import { ORGANIZATIONS } from '../data/orgs';
 import { gerarProfecia } from '../lib/prophecyTemplate';
-import { fetchProphecyByUsername } from '../lib/supabaseClient';
 import { staggerContainer, fadeUp } from '../lib/motionVariants';
 import { useIndiceProfecias } from '../hooks/useIndiceProfecias';
 
-const inputClass =
-  'w-full rounded-xl border-2 border-fdd-gold-dark/40 bg-fdd-cream/90 px-4 py-2 text-sm text-fdd-ink placeholder:text-fdd-ink/40 focus:border-fdd-gold focus:outline-none';
-const labelClass = 'block text-xs uppercase tracking-[0.2em] text-fdd-gold-dark';
+const ABAS = [
+  { id: 'gerar', rotulo: 'Gerar' },
+  { id: 'buscar', rotulo: 'Buscar' },
+  { id: 'arquivo', rotulo: 'Arquivo' },
+  { id: 'arvore', rotulo: 'Árvore' },
+];
 
 function ModeTab({ active, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border-2 px-6 py-2 font-display text-sm tracking-wide transition ${
+      aria-pressed={active}
+      className={`rounded-full border-2 px-4 py-2 font-display text-sm tracking-wide transition sm:px-6 ${
         active
           ? 'border-fdd-gold-dark bg-fdd-gold text-fdd-ink'
           : 'border-fdd-gold-dark/40 bg-transparent text-fdd-cream-dark hover:border-fdd-gold hover:text-fdd-gold-light'
@@ -29,34 +42,7 @@ function ModeTab({ active, onClick, children }) {
   );
 }
 
-function CardShell({ children }) {
-  return (
-    <div className="relative w-full overflow-hidden rounded-3xl bg-fdd-cream p-6 text-fdd-ink shadow-2xl shadow-black/50 sm:p-10">
-      <GreekFrame thickness={12} tile={24} className="text-fdd-gold" />
-      <div className="relative z-10">{children}</div>
-    </div>
-  );
-}
-
-function ProfeciaDestaque({ nomeExibicao, textoProfecia }) {
-  return (
-    <motion.div variants={fadeUp} className="w-full">
-      <CardShell>
-        <div className="flex flex-col items-center text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-fdd-gold-dark">
-            A profecia de {nomeExibicao}
-          </p>
-          <LaurelDivider className="mx-auto mt-4 h-5 w-32 text-fdd-gold-dark" />
-          <p className="mt-6 max-w-2xl font-display text-lg leading-relaxed text-fdd-ink sm:text-xl">
-            "{textoProfecia}"
-          </p>
-        </div>
-      </CardShell>
-    </motion.div>
-  );
-}
-
-function GerarProfecia({ indice }) {
+function GerarProfecia({ indice, onVerNaArvore }) {
   const [username, setUsername] = useState('');
   const [nomeExibicao, setNomeExibicao] = useState('');
   const [parenteDivino, setParenteDivino] = useState(GODS[0].id);
@@ -73,26 +59,24 @@ function GerarProfecia({ indice }) {
       return;
     }
 
-    // O registro é local: a profecia entra no índice (árvore AVL) em memória,
-    // e a própria busca na árvore garante que o username é único.
     if (indice.existe(user)) {
       setResultado(null);
       setErro('Já existe uma profecia registrada com esse nome de usuário! Use a aba Buscar.');
       return;
     }
 
-    const textoProfecia = gerarProfecia({ nomeExibicao: nome, parenteDivino, organizacao });
-    indice.adicionarProfecia({
+    const profecia = {
       username: user,
       nome_exibicao: nome,
       parente_divino: parenteDivino,
       organizacao,
-      texto_profecia: textoProfecia,
+      texto_profecia: gerarProfecia({ nomeExibicao: nome, parenteDivino, organizacao }),
       created_at: new Date().toISOString(),
-    });
+    };
+    indice.adicionarProfecia(profecia);
 
     setErro(null);
-    setResultado({ nome_exibicao: nome, texto_profecia: textoProfecia });
+    setResultado(profecia);
   }
 
   return (
@@ -168,10 +152,7 @@ function GerarProfecia({ indice }) {
 
             {erro && <p className="text-sm text-red-700">{erro}</p>}
 
-            <button
-              type="submit"
-              className="mt-2 inline-flex items-center justify-center rounded-full border-2 border-fdd-gold-dark bg-fdd-gold px-6 py-2 font-display text-sm tracking-wide text-fdd-ink transition hover:bg-fdd-gold-light"
-            >
+            <button type="submit" className={`${botaoClass} mt-2`}>
               Consultar as Moiras
             </button>
           </form>
@@ -179,73 +160,11 @@ function GerarProfecia({ indice }) {
       </motion.div>
 
       {resultado && (
-        <ProfeciaDestaque nomeExibicao={resultado.nome_exibicao} textoProfecia={resultado.texto_profecia} />
-      )}
-    </motion.div>
-  );
-}
-
-function BuscarProfecia() {
-  const [usernameBusca, setUsernameBusca] = useState('');
-  const [buscou, setBuscou] = useState(false);
-  const [resultado, setResultado] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleBuscar(event) {
-    event.preventDefault();
-    if (!usernameBusca.trim()) return;
-
-    setLoading(true);
-    const { data, error } = await fetchProphecyByUsername(usernameBusca.trim());
-    setLoading(false);
-
-    if (error) {
-      setResultado(null);
-      setBuscou(true);
-      return;
-    }
-
-    setResultado(data);
-    setBuscou(true);
-  }
-
-  return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex w-full flex-col gap-8">
-      <motion.div variants={fadeUp} className="w-full">
-        <CardShell>
-          <form onSubmit={handleBuscar} className="flex flex-col gap-5 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className={labelClass} htmlFor="usernameBusca">
-                Nome de usuário
-              </label>
-              <input
-                id="usernameBusca"
-                type="text"
-                value={usernameBusca}
-                onChange={(event) => setUsernameBusca(event.target.value)}
-                placeholder="ex: filho-de-atena-23"
-                className={`${inputClass} mt-2`}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center justify-center rounded-full border-2 border-fdd-gold-dark bg-fdd-gold px-6 py-2 font-display text-sm tracking-wide text-fdd-ink transition hover:bg-fdd-gold-light disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? 'Buscando...' : 'Buscar'}
-            </button>
-          </form>
-        </CardShell>
-      </motion.div>
-
-      {buscou && resultado && (
-        <ProfeciaDestaque nomeExibicao={resultado.nome_exibicao} textoProfecia={resultado.texto_profecia} />
-      )}
-
-      {buscou && !resultado && (
-        <motion.p variants={fadeUp} className="text-center text-sm text-fdd-cream-dark">
-          Nenhuma profecia encontrada com esse nome! Lembre-se que é seu username.
-        </motion.p>
+        <ProfeciaDestaque key={resultado.username} profecia={resultado}>
+          <button type="button" onClick={onVerNaArvore} className={`${botaoSecundarioClass} mt-6`}>
+            Ver onde ela entrou na árvore →
+          </button>
+        </ProfeciaDestaque>
       )}
     </motion.div>
   );
@@ -253,7 +172,6 @@ function BuscarProfecia() {
 
 export default function Profecias() {
   const [modo, setModo] = useState('gerar');
-  // Fica na página (e não em cada aba) para a árvore sobreviver à troca de abas.
   const indice = useIndiceProfecias();
 
   return (
@@ -268,20 +186,23 @@ export default function Profecias() {
         <h1 className="mt-3 font-display text-3xl text-fdd-cream fdd-glow-text sm:text-4xl">Profecias</h1>
         <LaurelDivider className="mx-auto mt-4 h-6 w-40 text-fdd-gold" />
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-fdd-cream-dark">
-          Registre a profecia de um semideus junto às Moiras, ou consulte uma já registrada pelo seu nome de usuário (username).
+          Registre a profecia de um semideus junto às Moiras, consulte uma já registrada pelo username, percorra o
+          arquivo em ordem alfabética ou veja a árvore AVL que organiza tudo.
         </p>
       </motion.div>
 
-      <motion.div variants={fadeUp} className="flex gap-4">
-        <ModeTab active={modo === 'gerar'} onClick={() => setModo('gerar')}>
-          Gerar
-        </ModeTab>
-        <ModeTab active={modo === 'buscar'} onClick={() => setModo('buscar')}>
-          Buscar
-        </ModeTab>
+      <motion.div variants={fadeUp} className="flex flex-wrap justify-center gap-2 sm:gap-4">
+        {ABAS.map((aba) => (
+          <ModeTab key={aba.id} active={modo === aba.id} onClick={() => setModo(aba.id)}>
+            {aba.rotulo}
+          </ModeTab>
+        ))}
       </motion.div>
 
-      {modo === 'gerar' ? <GerarProfecia indice={indice} /> : <BuscarProfecia />}
+      {modo === 'gerar' && <GerarProfecia indice={indice} onVerNaArvore={() => setModo('arvore')} />}
+      {modo === 'buscar' && <BuscaProfecia indice={indice} />}
+      {modo === 'arquivo' && <ArquivoProfecias indice={indice} />}
+      {modo === 'arvore' && <VisualizadorArvore indice={indice} />}
     </motion.div>
   );
 }
