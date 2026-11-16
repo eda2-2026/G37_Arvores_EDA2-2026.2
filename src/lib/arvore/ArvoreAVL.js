@@ -192,6 +192,24 @@ function entrada(no) {
   return no ? { chave: no.chave, valor: no.valor } : null;
 }
 
+/** Empilha `no` e todo o caminho mais à esquerda abaixo dele. */
+function empilharEsquerda(no, pilha) {
+  for (; no; no = no.esquerda) pilha.push(no);
+}
+
+/**
+ * Continua um percurso em ordem a partir de uma pilha de nós pendentes cujo
+ * topo é sempre o menor nó ainda não visitado.
+ */
+function* continuarEmOrdem(pilha) {
+  while (pilha.length > 0) {
+    const no = pilha.pop();
+    yield entrada(no);
+    // Depois do nó vêm os da subárvore direita, a partir do menor deles.
+    empilharEsquerda(no.direita, pilha);
+  }
+}
+
 /**
  * Comparador padrão: ordena com `<` e `>`. Para strings, isso é a ordem dos
  * códigos de caractere (não `localeCompare`), a mesma que a busca por
@@ -357,19 +375,8 @@ export class ArvoreAVL {
    */
   *percorrerEmOrdem() {
     const pilha = [];
-    let atual = this.raiz;
-
-    while (atual || pilha.length > 0) {
-      // Desce o máximo possível pela esquerda, guardando o caminho.
-      while (atual) {
-        pilha.push(atual);
-        atual = atual.esquerda;
-      }
-      // O topo da pilha é o menor nó ainda não visitado.
-      atual = pilha.pop();
-      yield entrada(atual);
-      atual = atual.direita;
-    }
+    empilharEsquerda(this.raiz, pilha);
+    yield* continuarEmOrdem(pilha);
   }
 
   /**
@@ -384,6 +391,148 @@ export class ArvoreAVL {
   /** Permite `for (const { chave, valor } of arvore)`, em ordem. */
   [Symbol.iterator]() {
     return this.percorrerEmOrdem();
+  }
+
+  /**
+   * Percorre em ordem crescente a partir da primeira chave ≥ `chave`, que não
+   * precisa existir na árvore. A descida inicial empilha só os nós que ainda
+   * vão ser visitados, então começar no meio custa O(log n), e cada passo
+   * seguinte custa O(1) amortizado.
+   *
+   * @returns {Generator<{chave: *, valor: *}>}
+   */
+  *percorrerAPartirDe(chave) {
+    const pilha = [];
+    let no = this.raiz;
+    while (no) {
+      if (this.comparar(no.chave, chave) >= 0) {
+        // no ≥ chave: entra no percurso, e à esquerda ainda pode haver
+        // chaves menores que ele, mas ≥ chave.
+        pilha.push(no);
+        no = no.esquerda;
+      } else {
+        // no < chave: ele e toda a subárvore esquerda ficam de fora.
+        no = no.direita;
+      }
+    }
+    yield* continuarEmOrdem(pilha);
+  }
+
+  /**
+   * Entradas cujas chaves começam com `prefixo`, em ordem, até `limite`.
+   *
+   * Supõe chaves string e o comparador padrão. Nessa ordem, as chaves com um
+   * mesmo prefixo ficam todas juntas e começam a partir do próprio prefixo,
+   * então basta achar a primeira chave ≥ prefixo e andar em ordem até a
+   * primeira que não começa com ele. O(log n + k), com k = resultados.
+   *
+   * @param {string} prefixo
+   * @param {number} [limite] máximo de resultados (sem limite por padrão)
+   * @returns {Array<{chave: string, valor: *}>}
+   */
+  buscarPorPrefixo(prefixo, limite = Infinity) {
+    const resultado = [];
+    if (limite <= 0) return resultado;
+
+    for (const atual of this.percorrerAPartirDe(prefixo)) {
+      if (!atual.chave.startsWith(prefixo)) break;
+      resultado.push(atual);
+      if (resultado.length >= limite) break;
+    }
+    return resultado;
+  }
+
+  /**
+   * k-ésima menor entrada, com k começando em 0 (`kEsimo(0)` é o mínimo).
+   * Usa o tamanho guardado em cada nó: se a subárvore esquerda tem `e` nós,
+   * o próprio nó é o de índice `e`; um k menor está à esquerda, e um maior
+   * está à direita, com índice k − e − 1 lá dentro. O(log n).
+   *
+   * @param {number} k
+   * @returns {{chave: *, valor: *} | null} null se k está fora de 0..n−1
+   */
+  kEsimo(k) {
+    if (!Number.isInteger(k) || k < 0 || k >= this.tamanho()) return null;
+
+    let no = this.raiz;
+    while (no) {
+      const naEsquerda = tamanhoDe(no.esquerda);
+      if (k < naEsquerda) {
+        no = no.esquerda;
+      } else if (k === naEsquerda) {
+        return entrada(no);
+      } else {
+        k -= naEsquerda + 1;
+        no = no.direita;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Quantas chaves da árvore são menores que `chave`, que não precisa
+   * existir. Se existir, é o índice dela na ordem, e `kEsimo(posicao(c))`
+   * devolve `c`. O(log n).
+   *
+   * @returns {number}
+   */
+  posicao(chave) {
+    let menores = 0;
+    let no = this.raiz;
+    while (no) {
+      const cmp = this.comparar(chave, no.chave);
+      if (cmp === 0) return menores + tamanhoDe(no.esquerda);
+      if (cmp < 0) {
+        no = no.esquerda;
+      } else {
+        // O nó e toda a subárvore esquerda dele são menores que a chave.
+        menores += tamanhoDe(no.esquerda) + 1;
+        no = no.direita;
+      }
+    }
+    return menores;
+  }
+
+  /**
+   * Maior entrada com chave estritamente menor que `chave`, que não precisa
+   * existir. O(log n).
+   *
+   * @returns {{chave: *, valor: *} | null} null se não há chave menor
+   */
+  antecessor(chave) {
+    let candidato = null;
+    let no = this.raiz;
+    while (no) {
+      if (this.comparar(no.chave, chave) < 0) {
+        // Serve, mas pode haver um maior (ainda < chave) à direita.
+        candidato = no;
+        no = no.direita;
+      } else {
+        no = no.esquerda;
+      }
+    }
+    return entrada(candidato);
+  }
+
+  /**
+   * Menor entrada com chave estritamente maior que `chave`, que não precisa
+   * existir. O(log n).
+   *
+   * @returns {{chave: *, valor: *} | null} null se não há chave maior
+   */
+  sucessor(chave) {
+    let candidato = null;
+    let no = this.raiz;
+    while (no) {
+      if (this.comparar(no.chave, chave) > 0) {
+        // Serve, mas pode haver um menor (ainda > chave) à esquerda.
+        candidato = no;
+        no = no.esquerda;
+      } else {
+        no = no.direita;
+      }
+    }
+    return entrada(candidato);
   }
 
   /**

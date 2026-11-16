@@ -114,7 +114,8 @@ tamanho da subárvore.
 | `buscar(chave)` | Busca exata | O(log n) |
 | `buscarPorPrefixo(prefixo, limite)` | Chaves que começam com o prefixo, em ordem | O(log n + k) |
 | `emOrdem()` | Percurso em ordem (alfabética) | O(n) |
-| `kEsimo(k)` | k-ésima menor chave, usada na paginação | O(log n) |
+| `percorrerAPartirDe(chave)` | Percurso em ordem a partir da primeira chave ≥ `chave` | O(log n + k) |
+| `kEsimo(k)` | k-ésima menor chave (k começa em 0), usada na paginação | O(log n) |
 | `posicao(chave)` | Quantas chaves são menores que esta | O(log n) |
 | `antecessor(chave)` / `sucessor(chave)` | Vizinhos em ordem | O(log n) |
 | `altura()` / `tamanho()` | Métricas para o visualizador e o benchmark | O(1) |
@@ -133,7 +134,7 @@ Cada tarefa corresponde a um commit. As marcadas já foram feitas.
 - [x] 5. Inserção com rebalanceamento (casos LL, RR, LR e RL)
 - [x] 6. Busca exata, mínimo, máximo e percurso em ordem
 - [x] 7. Remoção com rebalanceamento
-- [ ] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
+- [x] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
 - [ ] 9. Dados locais: profecias de exemplo em `src/data/profeciasLocais.js`, sem Supabase
 - [ ] 10. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias registradas na aba "Gerar"
 - [ ] 11. Autocomplete na aba "Buscar"
