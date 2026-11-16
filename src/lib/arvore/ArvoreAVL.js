@@ -116,6 +116,54 @@ export function rotacaoEsquerda(x) {
 }
 
 /**
+ * Corrige um nó depois de uma inserção ou remoção numa de suas subárvores.
+ * Atualiza altura e tamanho e, se o fator de balanceamento saiu de −1..1,
+ * aplica a rotação do caso correspondente:
+ *
+ * | Fator do nó | Fator do filho mais alto | Caso | Correção                                  |
+ * |-------------|--------------------------|------|-------------------------------------------|
+ * | > 1         | esquerdo ≥ 0             | LL   | rotação à direita no nó                   |
+ * | > 1         | esquerdo < 0             | LR   | à esquerda no filho, depois à direita no nó |
+ * | < −1        | direito ≤ 0              | RR   | rotação à esquerda no nó                  |
+ * | < −1        | direito > 0              | RL   | à direita no filho, depois à esquerda no nó |
+ *
+ * Filho com fator 0 só aparece na remoção; nesse caso a rotação simples basta.
+ *
+ * Devolve a nova raiz da subárvore. Se `rotacoes` for passado, registra nele
+ * o caso aplicado e a chave do nó que estava desbalanceado.
+ *
+ * @param {NoAVL} no
+ * @param {Array<{caso: 'LL' | 'RR' | 'LR' | 'RL', chave: *}>} [rotacoes]
+ * @returns {NoAVL}
+ */
+export function balancear(no, rotacoes) {
+  atualizar(no);
+  const fator = fatorBalanceamento(no);
+
+  if (fator > 1) {
+    if (fatorBalanceamento(no.esquerda) < 0) {
+      rotacoes?.push({ caso: 'LR', chave: no.chave });
+      no.esquerda = rotacaoEsquerda(no.esquerda);
+    } else {
+      rotacoes?.push({ caso: 'LL', chave: no.chave });
+    }
+    return rotacaoDireita(no);
+  }
+
+  if (fator < -1) {
+    if (fatorBalanceamento(no.direita) > 0) {
+      rotacoes?.push({ caso: 'RL', chave: no.chave });
+      no.direita = rotacaoDireita(no.direita);
+    } else {
+      rotacoes?.push({ caso: 'RR', chave: no.chave });
+    }
+    return rotacaoEsquerda(no);
+  }
+
+  return no;
+}
+
+/**
  * Comparador padrão: ordena com `<` e `>`. Para strings, isso é a ordem dos
  * códigos de caractere (não `localeCompare`), a mesma que a busca por
  * prefixo vai assumir.
@@ -137,6 +185,12 @@ export class ArvoreAVL {
     this.comparar = comparar;
     /** @type {NoAVL | null} */
     this.raiz = null;
+    /**
+     * Rotações aplicadas na última operação que alterou a árvore, do nó mais
+     * baixo para o mais alto. Usado pelo visualizador.
+     * @type {Array<{caso: 'LL' | 'RR' | 'LR' | 'RL', chave: *}>}
+     */
+    this.ultimasRotacoes = [];
   }
 
   /** Altura da árvore (0 se vazia). O(1). */
@@ -151,5 +205,38 @@ export class ArvoreAVL {
 
   estaVazia() {
     return this.raiz === null;
+  }
+
+  /**
+   * Insere `chave` com `valor` e rebalanceia o caminho de volta até a raiz.
+   * As chaves são únicas: se a chave já existe, só o valor é trocado.
+   * O(log n).
+   *
+   * @returns {boolean} true se a chave era nova, false se só trocou o valor
+   */
+  inserir(chave, valor) {
+    this.ultimasRotacoes = [];
+    const tamanhoAntes = this.tamanho();
+    this.raiz = this.#inserirEm(this.raiz, chave, valor);
+    return this.tamanho() > tamanhoAntes;
+  }
+
+  /**
+   * @param {NoAVL | null} no
+   * @returns {NoAVL} a nova raiz desta subárvore
+   */
+  #inserirEm(no, chave, valor) {
+    if (!no) return new NoAVL(chave, valor);
+
+    const cmp = this.comparar(chave, no.chave);
+    if (cmp === 0) {
+      no.valor = valor;
+      return no;
+    }
+
+    if (cmp < 0) no.esquerda = this.#inserirEm(no.esquerda, chave, valor);
+    else no.direita = this.#inserirEm(no.direita, chave, valor);
+
+    return balancear(no, this.ultimasRotacoes);
   }
 }
