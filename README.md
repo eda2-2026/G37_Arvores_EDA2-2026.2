@@ -130,7 +130,7 @@ Cada tarefa corresponde a um commit. As marcadas já foram feitas.
 - [x] 3. README com a proposta, a funcionalidade nova e o escopo
 - [x] 4. Estrutura base da AVL: nó (chave, valor, altura, tamanho), fator de balanceamento e rotações simples à esquerda e à direita
 - [x] 5. Inserção com rebalanceamento (casos LL, RR, LR e RL)
-- [ ] 6. Busca exata, mínimo, máximo e percurso em ordem
+- [x] 6. Busca exata, mínimo, máximo e percurso em ordem
 - [ ] 7. Remoção com rebalanceamento
 - [ ] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
 - [ ] 9. Testes automatizados (`node --test`) das invariantes da árvore: ordem de BST, |fator de balanceamento| ≤ 1, alturas e tamanhos corretos depois de inserções e remoções aleatórias

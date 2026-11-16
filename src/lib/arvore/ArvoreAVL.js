@@ -164,6 +164,35 @@ export function balancear(no, rotacoes) {
 }
 
 /**
+ * Nó com a menor chave da subárvore: o mais à esquerda. O(altura).
+ *
+ * @param {NoAVL | null} no
+ * @returns {NoAVL | null}
+ */
+export function minimoNo(no) {
+  if (!no) return null;
+  while (no.esquerda) no = no.esquerda;
+  return no;
+}
+
+/**
+ * Nó com a maior chave da subárvore: o mais à direita. O(altura).
+ *
+ * @param {NoAVL | null} no
+ * @returns {NoAVL | null}
+ */
+export function maximoNo(no) {
+  if (!no) return null;
+  while (no.direita) no = no.direita;
+  return no;
+}
+
+/** @param {NoAVL | null} no */
+function entrada(no) {
+  return no ? { chave: no.chave, valor: no.valor } : null;
+}
+
+/**
  * Comparador padrão: ordena com `<` e `>`. Para strings, isso é a ordem dos
  * códigos de caractere (não `localeCompare`), a mesma que a busca por
  * prefixo vai assumir.
@@ -238,5 +267,93 @@ export class ArvoreAVL {
     else no.direita = this.#inserirEm(no.direita, chave, valor);
 
     return balancear(no, this.ultimasRotacoes);
+  }
+
+  /**
+   * Busca exata. O(log n).
+   *
+   * @returns {*} o valor guardado na chave, ou undefined se ela não existe
+   */
+  buscar(chave) {
+    const no = this.#buscarNo(chave);
+    return no ? no.valor : undefined;
+  }
+
+  /** Se a chave existe na árvore. O(log n). */
+  contem(chave) {
+    return this.#buscarNo(chave) !== null;
+  }
+
+  /**
+   * Menor chave da árvore. O(log n).
+   *
+   * @returns {{chave: *, valor: *} | null} null se a árvore está vazia
+   */
+  minimo() {
+    return entrada(minimoNo(this.raiz));
+  }
+
+  /**
+   * Maior chave da árvore. O(log n).
+   *
+   * @returns {{chave: *, valor: *} | null} null se a árvore está vazia
+   */
+  maximo() {
+    return entrada(maximoNo(this.raiz));
+  }
+
+  /**
+   * Percorre as entradas em ordem crescente de chave (esquerda, nó, direita).
+   * Usa uma pilha explícita em vez de recursão, então quem consome pode parar
+   * no meio (ex: `for...of` com `break`) sem pagar pelo resto da árvore.
+   * O(n) para percorrer tudo.
+   *
+   * @returns {Generator<{chave: *, valor: *}>}
+   */
+  *percorrerEmOrdem() {
+    const pilha = [];
+    let atual = this.raiz;
+
+    while (atual || pilha.length > 0) {
+      // Desce o máximo possível pela esquerda, guardando o caminho.
+      while (atual) {
+        pilha.push(atual);
+        atual = atual.esquerda;
+      }
+      // O topo da pilha é o menor nó ainda não visitado.
+      atual = pilha.pop();
+      yield entrada(atual);
+      atual = atual.direita;
+    }
+  }
+
+  /**
+   * Todas as entradas em ordem crescente de chave. O(n).
+   *
+   * @returns {Array<{chave: *, valor: *}>}
+   */
+  emOrdem() {
+    return [...this.percorrerEmOrdem()];
+  }
+
+  /** Permite `for (const { chave, valor } of arvore)`, em ordem. */
+  [Symbol.iterator]() {
+    return this.percorrerEmOrdem();
+  }
+
+  /**
+   * Desce da raiz comparando a chave: menor vai para a esquerda, maior para
+   * a direita. Cada comparação descarta uma subárvore inteira.
+   *
+   * @returns {NoAVL | null}
+   */
+  #buscarNo(chave) {
+    let no = this.raiz;
+    while (no) {
+      const cmp = this.comparar(chave, no.chave);
+      if (cmp === 0) return no;
+      no = cmp < 0 ? no.esquerda : no.direita;
+    }
+    return null;
   }
 }
