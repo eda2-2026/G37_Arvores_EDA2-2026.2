@@ -1,230 +1,171 @@
-# Filhos do Destino — Quiz
+# Árvore AVL no Filhos do Destino — G37
 
-Site oficial do universo de RPG "Filhos do Destino": landing page, quiz de
-descoberta de personagem, mapa interativo do território (Lua Nova), gerador de
-profecias e a página de resultado compartilhável. React + Vite + Tailwind v4.
+**Disciplina:** Estruturas de Dados 2 (2026.2)<br>
+**Conteúdo:** Árvores de busca balanceadas<br>
+**Grupo:** G37
 
-## Sumário
+## Alunos
 
-- [Objetivo](#objetivo)
-- [Stack técnica](#stack-técnica)
-- [Como rodar localmente](#como-rodar-localmente)
-- [Rotas](#rotas)
-- [Arquitetura](#arquitetura)
-  - [Fluxo do quiz e o motor de pontuação](#fluxo-do-quiz-e-o-motor-de-pontuação)
-  - [Estado global (`ResultsContext`)](#estado-global-resultscontext)
-  - [Assets por convenção (`import.meta.glob`)](#assets-por-convenção-importmetaglob)
-  - [Animação de entrada](#animação-de-entrada)
-  - [Tokens de design](#tokens-de-design)
-- [Páginas em detalhe](#páginas-em-detalhe)
-- [Banco de dados (Supabase)](#banco-de-dados-supabase)
-- [Editando conteúdo](#editando-conteúdo)
-- [Estrutura de pastas](#estrutura-de-pastas)
-
-## Objetivo
-
-Dois quizzes de personalidade que descobrem qual dos 16 deuses gregos é o
-"parente divino" do usuário (15 perguntas) e qual das 5 organizações do
-universo ele integraria (11 perguntas) — usando um vetor de traços de
-personalidade e similaridade de cosseno, não um questionário de pontos fixos.
-Em volta disso, o site também é a porta de entrada pro universo da campanha: uma landing page
-apresentando a história e os personagens, um mapa navegável do território
-(Lua Nova) e um gerador de profecias por template, ligado a um banco de dados
-compartilhado para os jogadores registrarem e consultarem suas profecias.
-
-## Stack técnica
-
-| Camada | Tecnologia |
+| Matrícula | Aluno |
 |---|---|
-| Framework | React 19 + Vite |
-| Roteamento | react-router-dom v7 (`BrowserRouter`, incluindo a View Transitions API nativa via prop `viewTransition`) |
-| Estilo | Tailwind CSS v4 (tokens em `src/index.css`, via `@theme`) + DaisyUI |
-| Animação | Framer Motion (variantes compartilhadas em `src/lib/motionVariants.js`) |
-| Persistência | Supabase (Postgres) — resultados de quiz e profecias |
-| Geração de imagem | `html-to-image` (card de resultado compartilhável) |
-| Ícones | `react-icons` (família Font Awesome 6) |
-| Lint | Oxlint |
+| _a preencher_ | _a preencher_ |
 
-Sem TypeScript — o projeto é JS puro (`.jsx`), com JSDoc pontual em funções
-mais críticas (ex: `quizEngine.js`).
+## Sobre
 
-## Como rodar localmente
+Este trabalho implementa uma **árvore AVL** do zero, em JavaScript, e a usa
+num projeto real: o [Filhos do Destino Quiz](https://github.com/Faehzin/FDDQuiz),
+site do universo de RPG *Filhos do Destino* (React + Vite + Supabase).
+
+O código do site foi copiado do commit `0d33691` do repositório original, que
+não é alterado por este trabalho. A documentação original do site está em
+[docs/README-FDDQuiz.md](docs/README-FDDQuiz.md).
+
+## Onde a árvore entra
+
+### O problema hoje
+
+A página `/profecias` deixa cada jogador registrar uma profecia com um
+`username` único (tabela `profecias` no Supabase) e consultá-la depois na aba
+"Buscar". Essa consulta tem três limitações:
+
+1. **Só aceita o nome exato.** `fetchProphecyByUsername()` faz
+   `.eq('username', ...)`. Se o jogador erra uma letra ou não lembra se usou
+   maiúscula, recebe "nenhuma profecia encontrada".
+2. **Cada busca vai ao banco.** Todo clique em "Buscar" é uma ida e volta ao
+   Supabase.
+3. **Não dá pra navegar.** Não há como ver as profecias já registradas, em
+   ordem, nem passar de uma para a próxima.
+
+### Por que uma árvore de busca
+
+A análise anterior do projeto ([docs/analise-algoritmos-busca.md](docs/analise-algoritmos-busca.md))
+não encontrou uso para árvores de busca porque procurava dados *hierárquicos*
+nas listas fixas do site (16 deuses, 5 organizações). As profecias são um caso
+diferente: a coleção **cresce com o uso**, tem uma **chave ordenável**
+(`username`) e precisa de consultas que dependem de **ordem**, não só de
+igualdade.
+
+| Necessidade | Hash (`Map`/objeto) | Array ordenado + busca binária | Árvore AVL |
+|---|---|---|---|
+| Busca exata | O(1) | O(log n) | O(log n) |
+| Inserir uma profecia nova | O(1) | O(n), desloca os elementos | O(log n) |
+| Autocomplete por prefixo | O(n), varre tudo | O(log n + k) | O(log n + k) |
+| Listar em ordem alfabética | O(n log n), ordena toda vez | O(n) | O(n), percurso em ordem |
+| Pular para a página p | não suporta | O(1) | O(log n), com tamanho da subárvore |
+| Profecia anterior / próxima | não suporta | O(log n) | O(log n) |
+
+*k* é o número de resultados devolvidos.
+
+O hash só resolve igualdade. O array ordenado resolve as consultas, mas paga
+O(n) a cada inserção. A árvore balanceada mantém todas as operações em tempo
+logarítmico (mais o tamanho da resposta) mesmo com inserções acontecendo.
+
+### Por que AVL e não rubro-negra
+
+O uso é **dominado por leitura**: cada jogador registra uma profecia uma vez,
+mas o índice é consultado a cada tecla do autocomplete e a cada página do
+arquivo. A AVL é balanceada de forma mais rígida (altura até ~1,44·log₂ n,
+contra ~2·log₂ n da rubro-negra), então as buscas passam por menos nós. O custo
+extra dela, mais rotações ao inserir e remover, pesa pouco quando há poucas
+escritas. Os quatro casos de rotação (LL, RR, LR, RL) também são fáceis de
+mostrar na apresentação.
+
+## Funcionalidade nova: Arquivo das Moiras
+
+Um índice das profecias em memória, mantido numa árvore AVL, que traz quatro
+melhorias para a página `/profecias`:
+
+1. **Busca com autocomplete.** Na aba "Buscar", as sugestões aparecem enquanto
+   o jogador digita, por consulta de prefixo na árvore, sem ir ao banco a cada
+   tecla. A busca passa a ignorar maiúsculas, minúsculas e acentos.
+2. **Aba "Arquivo".** Lista todas as profecias em ordem alfabética de
+   username, com paginação. O salto para qualquer página usa o k-ésimo
+   elemento da árvore. Ao abrir uma profecia, os botões "anterior" e "próxima"
+   navegam pelo antecessor e pelo sucessor.
+3. **Atualização na hora.** Quando alguém registra uma profecia na aba "Gerar",
+   ela é inserida na árvore e já aparece no arquivo e no autocomplete, sem
+   recarregar a página.
+4. **Visualizador da árvore.** Desenha a árvore atual com a altura e o fator de
+   balanceamento de cada nó e destaca as rotações feitas na última inserção.
+   É a parte didática, usada na apresentação.
+
+**De onde vêm os dados.** Ao abrir `/profecias`, o site busca no Supabase só os
+campos leves de cada profecia (`username`, `nome_exibicao`, `parente_divino`,
+`organizacao`, `created_at`) e monta a árvore. O texto completo continua sendo
+buscado só quando o jogador abre uma profecia. Sem Supabase configurado, o site
+usa um conjunto de profecias de demonstração, para funcionar offline.
+
+**Chave da árvore.** A chave é o `username` normalizado (minúsculas, sem
+acentos, sem espaços nas pontas), com o `username` original como desempate. No
+banco, `Ana` e `ana` são usernames diferentes e podem existir juntos, então
+eles não podem virar a mesma chave na árvore.
+
+## Operações da árvore
+
+A árvore fica em `src/lib/arvore/ArvoreAVL.js`, sem dependências e sem React,
+para poder ser testada com Node puro. Cada nó guarda chave, valor, altura e
+tamanho da subárvore.
+
+| Operação | O que faz | Complexidade |
+|---|---|---|
+| `inserir(chave, valor)` | Insere e rebalanceia (rotações LL, RR, LR, RL) | O(log n) |
+| `remover(chave)` | Remove e rebalanceia | O(log n) |
+| `buscar(chave)` | Busca exata | O(log n) |
+| `buscarPorPrefixo(prefixo, limite)` | Chaves que começam com o prefixo, em ordem | O(log n + k) |
+| `emOrdem()` | Percurso em ordem (alfabética) | O(n) |
+| `kEsimo(k)` | k-ésima menor chave, usada na paginação | O(log n) |
+| `posicao(chave)` | Quantas chaves são menores que esta | O(log n) |
+| `antecessor(chave)` / `sucessor(chave)` | Vizinhos em ordem | O(log n) |
+| `altura()` / `tamanho()` | Métricas para o visualizador e os testes | O(1) |
+
+A interface não usa `remover`, porque o site não apaga profecias. A operação
+está no escopo por fazer parte do tipo abstrato e é coberta pelos testes.
+
+## Escopo
+
+Cada tarefa corresponde a um commit. As marcadas já foram feitas.
+
+- [x] 1. Commit inicial do repositório
+- [x] 2. Importação do FDDQuiz (cópia do commit `0d33691`)
+- [x] 3. README com a proposta, a funcionalidade nova e o escopo
+- [ ] 4. Estrutura base da AVL: nó (chave, valor, altura, tamanho), fator de balanceamento e rotações simples à esquerda e à direita
+- [ ] 5. Inserção com rebalanceamento (casos LL, RR, LR e RL)
+- [ ] 6. Busca exata, mínimo, máximo e percurso em ordem
+- [ ] 7. Remoção com rebalanceamento
+- [ ] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
+- [ ] 9. Testes automatizados (`node --test`) das invariantes da árvore: ordem de BST, |fator de balanceamento| ≤ 1, alturas e tamanhos corretos depois de inserções e remoções aleatórias
+- [ ] 10. Carga dos dados: `fetchAllProphecies()` paginado no Supabase e profecias de demonstração para uso offline
+- [ ] 11. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias novas
+- [ ] 12. Autocomplete na aba "Buscar"
+- [ ] 13. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
+- [ ] 14. Visualizador da árvore, com altura, fator de balanceamento e rotações
+- [ ] 15. Benchmark: AVL × busca sequencial × array ordenado, para n = 10³, 10⁴ e 10⁵
+- [ ] 16. README final com os resultados do benchmark, screenshots e roteiro da apresentação
+
+### Arquivos previstos
+
+```
+src/lib/arvore/ArvoreAVL.js        # a árvore (JS puro, sem React)
+src/lib/arvore/normalizarChave.js  # minúsculas, sem acento, sem espaços nas pontas
+src/hooks/useIndiceProfecias.js    # carrega as profecias e monta a árvore
+src/components/profecias/          # autocomplete, arquivo e visualizador
+src/data/profeciasDemo.js          # profecias de demonstração (offline)
+tests/arvoreAVL.test.js            # testes das invariantes
+scripts/benchmark-arvore.js        # comparação de desempenho
+```
+
+## Como rodar
 
 ```bash
 npm install
-npm run dev       # servidor de desenvolvimento (Vite)
-npm run build     # build de produção em dist/
-npm run preview   # serve o build de produção localmente
-npm run lint      # oxlint
+npm run dev     # servidor de desenvolvimento (Vite)
+npm test        # testes da árvore (disponível a partir da tarefa 9)
 ```
 
-Crie um `.env.local` na raiz com as credenciais do Supabase:
+Para ligar o Supabase, crie um `.env.local` na raiz com `VITE_SUPABASE_URL` e
+`VITE_SUPABASE_ANON_KEY` (detalhes em [docs/README-FDDQuiz.md](docs/README-FDDQuiz.md)).
+Sem ele, o site funciona normalmente, só sem gravar nem consultar o banco.
 
-```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
+## Licença
 
-Sem essas variáveis, o site funciona normalmente (quiz, mapa, landing) — só a
-gravação/consulta no Supabase (resultado do quiz e profecias) é desativada,
-com um aviso no console em vez de erro (ver `src/lib/supabaseClient.js`).
-
-## Rotas
-
-| Rota | Página | Observação |
-|---|---|---|
-| `/` | `Landing.jsx` | Landing page pública, fora do `<Layout>` padrão (tem seu próprio header/footer) |
-| `/quizes` | `Home.jsx` | Ponto de partida dos dois quizzes (era a rota `/` antes da landing existir) |
-| `/quiz/deuses` | `QuizGods.jsx` | Quiz de parente divino |
-| `/quiz/organizacoes` | `QuizOrgs.jsx` | Quiz de organização |
-| `/resultado` | `Result.jsx` | Resultado(s) do quiz + card compartilhável |
-| `/mapa` | `MapaMundi.jsx` | Mapa interativo, tela cheia (fora do `<Layout>`, via portal) |
-| `/profecias` | `Profecias.jsx` | Gerar ou consultar profecia por username |
-| `*` | — | Redireciona pra `/` |
-
-`/quizes`, `/quiz/*`, `/resultado` e `/profecias` compartilham o `<Layout>`
-(header simples com o logo + footer com redes sociais). `/` (landing) e
-`/mapa` têm chrome próprio e não usam `<Layout>`.
-
-## Arquitetura
-
-### Fluxo do quiz e o motor de pontuação
-
-Cada resposta de pergunta carrega um `effect` — um objeto de traço → peso (ex:
-`{ coragem: 2, preguica: -1 }`). O motor, em `src/lib/quizEngine.js`:
-
-1. `scoreUser()` soma os efeitos de todas as respostas num vetor de traços do
-   usuário.
-2. `rankResults()` projeta o vetor de cada entidade (deus ou organização),
-   normaliza os dois lados (z-score, usando `TRAIT_CALIBRATION_GODS` como
-   tabela de média/desvio-padrão por traço) e calcula a similaridade de
-   cosseno entre o vetor do usuário e o de cada entidade.
-3. `weightedPick()` sorteia o resultado final entre as 3 entidades com maior
-   similaridade, ponderado pelo próprio score — não é sempre a primeira
-   colocada, mas as melhores têm mais chance.
-
-`QuizFlow.jsx` é o componente genérico reaproveitado pelos dois quizzes
-(`QuizGods`/`QuizOrgs` só passam `questions`, `entities` e o setter de
-resultado certo); ele chama `scoreUser` → `rankResults` → `weightedPick` ao
-final da última pergunta, grava o resultado no `ResultsContext` e dispara
-`saveQuizResult()` (Supabase) antes de navegar pra `/resultado`.
-
-### Estado global (`ResultsContext`)
-
-`src/context/ResultsContext.jsx` guarda `godResult`/`orgResult` em memória
-(`useState`, sem `localStorage`) — dura a sessão do navegador, não sobrevive a
-um refresh. `/resultado` e a barra lateral do `/mapa`
-(`MapResultSidebar.jsx`) leem daqui; nenhum outro lugar guarda esse estado.
-
-### Assets por convenção (`import.meta.glob`)
-
-Três arquivos em `src/lib/` (`assetImages.js`, `campaignImages.js`,
-`mapImage.js`) seguem o mesmo padrão: usam `import.meta.glob` pra carregar
-todos os arquivos de uma pasta de assets e montar um objeto `{ slug:
-móduloImportado }`, onde `slug` é o nome do arquivo sem extensão. Isso permite
-que o código referencie uma imagem pelo `id` de uma entidade de dados
-(`godImageMap[hero.id]`) sem um `import` nomeado por arquivo — e sem quebrar o
-build se o arquivo ainda não existir (o valor só fica `undefined`, e os
-componentes caem num estado de placeholder). É assim que dá pra "só soltar o
-arquivo na pasta" pra revelar um herói, trocar a arte do mapa, etc.
-
-### Animação de entrada
-
-`src/lib/motionVariants.js` define duas variantes do Framer Motion reusadas
-no site inteiro: `fadeUp` (fade + leve subida, easing
-`cubic-bezier(0.16, 1, 0.3, 1)`) e `staggerContainer` (escalona a entrada dos
-filhos). Conteúdo acima da dobra anima no mount (`initial`/`animate`);
-seções mais abaixo na landing usam `whileInView` com `once: true`, pra
-disparar só quando o usuário rola até lá.
-
-### Tokens de design
-
-Paleta e tipografia vivem em `src/index.css` via `@theme` do Tailwind v4
-(`--color-fdd-*`, fontes `Cinzel` (display) + `Inter` (texto)). Componentes
-decorativos reaproveitados em várias páginas: `GreekFrame` (moldura em grega
-nos 4 lados de um card), `GreekKeyStrip` (faixa horizontal, usada no
-header/footer), `LaurelDivider` (divisor com ramo de louro).
-
-## Páginas em detalhe
-
-**Landing (`/`)** — 5 seções: header sticky (logo, nav, redes sociais, CTA
-Fastplay), hero (headline + CTAs + arte do Zeus com máscara de dissolução e
-fade de saída no scroll via `IntersectionObserver`), heróis da campanha
-(`CAMPAIGN_HEROES`, cards verticais com flip 3D no hover revelando o
-ator/atriz — só se o herói estiver `unlocked`), locais em destaque (reaproveita
-o lore de `mapLocations.js`) e footer.
-
-**Quiz (`/quizes`, `/quiz/deuses`, `/quiz/organizacoes`)** — fluxo de pergunta
-única por vez, uma pergunta por vez com transição de slide (`QuestionCard`),
-barra de progresso, e ao final grava no `ResultsContext` + Supabase.
-
-**Resultado (`/resultado`)** — mostra o(s) resultado(s) já respondido(s),
-convida a fazer o quiz que falta, e (com os dois resultados prontos) monta um
-card compartilhável (`ShareSection`/`ShareCard`, renderizado como PNG via
-`html-to-image` para download ou compartilhamento em redes sociais).
-
-**Mapa Mundi (`/mapa`)** — mapa em tela cheia (fora do fluxo normal de layout,
-renderizado via `createPortal` pra escapar do stacking context do `<Layout>`).
-Arraste pra pan, zoom por botão/scroll/pinça, com o zoom mínimo calculado
-dinamicamente (`computeFitRect`) pra sempre mostrar a imagem inteira sem
-cortar, tipo `object-fit: contain`. Marcadores (`MapMarker`) contra-escalam
-pra manter tamanho fixo na tela em qualquer zoom; clicar num marcador abre um
-painel lateral (`MapDetailPanel`) com o lore daquele local. Uma barra lateral
-discreta (`MapResultSidebar`) mostra o parente divino do usuário, se já tiver
-feito o quiz.
-
-**Profecias (`/profecias`)** — gera uma "profecia" combinando um fragmento
-sorteado por parente divino (`ABERTURAS_POR_DEUS`) com outro por organização
-(`MISSOES_POR_ORG`), em `src/lib/prophecyTemplate.js` — puramente local,
-sem IA nem rede. O usuário registra a profecia com um `username` único
-(gravado na tabela `profecias` do Supabase) e pode consultá-la depois na aba
-"Buscar".
-
-## Banco de dados (Supabase)
-
-Duas tabelas, ambas com RLS habilitado e políticas públicas de leitura/escrita
-(sem autenticação de usuário no site):
-
-- **`quiz_results`** — só recebe `insert` (`tipo_quiz`, `resultado_id`,
-  `vetor_usuario`). Nada no código lê essa tabela de volta hoje.
-- **`profecias`** — `username` (único), `nome_exibicao`, `parente_divino`,
-  `organizacao`, `texto_profecia`. A constraint `unique` em `username` já cria
-  um índice B-tree no Postgres, então a busca por username em
-  `fetchProphecyByUsername()` é O(log n) sem nada manual. O SQL de criação
-  está documentado em comentário no topo de `src/lib/supabaseClient.js`.
-
-## Editando conteúdo
-
-Tudo que é conteúdo (não lógica) fica em `src/data/`, como arrays/objetos
-simples — dá pra editar sem tocar em componente nenhum:
-
-| O que | Arquivo | Observação |
-|---|---|---|
-| Deuses (parentes divinos) | `data/gods.js` | `traits` de -1 a 1 por atributo; imagem em `assets/imagens/deuses/{id}.png` |
-| Organizações | `data/orgs.js` | Mesmo esquema de `traits`; imagem em `assets/imagens/orgs/{id}.png` |
-| Perguntas dos quizzes | `data/question-gods.js`, `data/question-orgs.js` | Cada opção tem um `effect` (traço → peso) |
-| Locais do mapa | `data/mapLocations.js` | Coordenadas `x`/`y` em % da imagem |
-| Heróis da campanha | `data/campaignHeroes.js` | Ver abaixo |
-
-**Para revelar um novo herói na landing:** solte o arquivo `{id}.png` (ou
-`.jpg`/`.webp`) em `src/assets/imagens/campanha/`, preencha `nome`/`origem` na
-entrada correspondente em `campaignHeroes.js` e troque `unlocked` pra `true`.
-Se quiser o flip revelando o ator/atriz, adicione também a entrada em
-`ACTOR_IMAGE_OVERRIDES` (`src/components/landing/HeroCard.jsx`) — os arquivos
-de ator não seguem um padrão de nome único, então esse mapeamento é manual.
-
-## Estrutura de pastas
-
-```
-src/
-  assets/imagens/       # deuses, orgs, campanha (heróis/atores/logo/texturas), backgrounds, mapa
-  components/           # componentes reutilizáveis (cards, decoração, quiz)
-    landing/             # seções específicas da landing page
-  context/               # ResultsContext (estado global do resultado do quiz)
-  data/                  # conteúdo do site (deuses, orgs, perguntas, locais, heróis)
-  hooks/                 # useCardImage (geração de PNG do card de resultado)
-  lib/                    # motor do quiz, mapas de asset, variantes de animação, cliente Supabase
-  pages/                  # uma por rota
-docs/
-  analise-algoritmos-busca.md   # levantamento acadêmico dos algoritmos de busca usados no projeto
-```
+MIT, herdada do projeto original. Ver [LICENSE](LICENSE).
