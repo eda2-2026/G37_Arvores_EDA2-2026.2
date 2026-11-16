@@ -270,6 +270,51 @@ export class ArvoreAVL {
   }
 
   /**
+   * Remove `chave` e rebalanceia o caminho de volta até a raiz. Diferente da
+   * inserção, que corrige no máximo um nó, uma remoção pode encurtar a
+   * subárvore depois da rotação e exigir rotações em vários níveis, até
+   * O(log n) delas. O(log n).
+   *
+   * @returns {boolean} true se a chave existia e foi removida
+   */
+  remover(chave) {
+    this.ultimasRotacoes = [];
+    const tamanhoAntes = this.tamanho();
+    this.raiz = this.#removerEm(this.raiz, chave);
+    return this.tamanho() < tamanhoAntes;
+  }
+
+  /**
+   * @param {NoAVL | null} no
+   * @returns {NoAVL | null} a nova raiz desta subárvore
+   */
+  #removerEm(no, chave) {
+    if (!no) return null;
+
+    const cmp = this.comparar(chave, no.chave);
+    if (cmp < 0) {
+      no.esquerda = this.#removerEm(no.esquerda, chave);
+    } else if (cmp > 0) {
+      no.direita = this.#removerEm(no.direita, chave);
+    } else {
+      // Nenhum ou um filho: o filho (ou null) toma o lugar do nó. A
+      // subárvore dele já está balanceada; quem rebalanceia é o pai.
+      if (!no.esquerda) return no.direita;
+      if (!no.direita) return no.esquerda;
+
+      // Dois filhos: o sucessor (menor chave da subárvore direita) toma o
+      // lugar do nó e é removido de onde estava. Ele tem no máximo um filho
+      // (o direito), então essa segunda remoção cai no caso acima.
+      const sucessor = minimoNo(no.direita);
+      no.chave = sucessor.chave;
+      no.valor = sucessor.valor;
+      no.direita = this.#removerEm(no.direita, sucessor.chave);
+    }
+
+    return balancear(no, this.ultimasRotacoes);
+  }
+
+  /**
    * Busca exata. O(log n).
    *
    * @returns {*} o valor guardado na chave, ou undefined se ela não existe
