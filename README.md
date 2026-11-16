@@ -8,7 +8,7 @@
 
 | Matrícula | Aluno |
 |---|---|
-| _a preencher_ | _a preencher_ |
+| 231011382 | Gabriel Sampaio Fae |
 
 ## Sobre
 
@@ -89,11 +89,12 @@ melhorias para a página `/profecias`:
    balanceamento de cada nó e destaca as rotações feitas na última inserção.
    É a parte didática, usada na apresentação.
 
-**De onde vêm os dados.** Ao abrir `/profecias`, o site busca no Supabase só os
-campos leves de cada profecia (`username`, `nome_exibicao`, `parente_divino`,
-`organizacao`, `created_at`) e monta a árvore. O texto completo continua sendo
-buscado só quando o jogador abre uma profecia. Sem Supabase configurado, o site
-usa um conjunto de profecias de demonstração, para funcionar offline.
+**De onde vêm os dados.** Tudo roda localmente, sem Supabase. Ao abrir
+`/profecias`, a árvore é montada a partir de profecias de exemplo guardadas no
+próprio projeto (`src/data/profeciasLocais.js`), e as registradas na aba
+"Gerar" entram nela em memória. Elas somem ao sair da página ou recarregar.
+A página não lê nem grava nada no banco do site em produção, e
+`src/lib/supabaseClient.js` não é alterado.
 
 **Chave da árvore.** A chave é o `username` normalizado (minúsculas, sem
 acentos, sem espaços nas pontas), com o `username` original como desempate. No
@@ -103,7 +104,7 @@ eles não podem virar a mesma chave na árvore.
 ## Operações da árvore
 
 A árvore fica em `src/lib/arvore/ArvoreAVL.js`, sem dependências e sem React,
-para poder ser testada com Node puro. Cada nó guarda chave, valor, altura e
+para poder ser usada fora da página também, como no benchmark. Cada nó guarda chave, valor, altura e
 tamanho da subárvore.
 
 | Operação | O que faz | Complexidade |
@@ -116,10 +117,10 @@ tamanho da subárvore.
 | `kEsimo(k)` | k-ésima menor chave, usada na paginação | O(log n) |
 | `posicao(chave)` | Quantas chaves são menores que esta | O(log n) |
 | `antecessor(chave)` / `sucessor(chave)` | Vizinhos em ordem | O(log n) |
-| `altura()` / `tamanho()` | Métricas para o visualizador e os testes | O(1) |
+| `altura()` / `tamanho()` | Métricas para o visualizador e o benchmark | O(1) |
 
 A interface não usa `remover`, porque o site não apaga profecias. A operação
-está no escopo por fazer parte do tipo abstrato e é coberta pelos testes.
+está no escopo por fazer parte do tipo abstrato.
 
 ## Escopo
 
@@ -133,14 +134,13 @@ Cada tarefa corresponde a um commit. As marcadas já foram feitas.
 - [x] 6. Busca exata, mínimo, máximo e percurso em ordem
 - [x] 7. Remoção com rebalanceamento
 - [ ] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
-- [ ] 9. Testes automatizados (`node --test`) das invariantes da árvore: ordem de BST, |fator de balanceamento| ≤ 1, alturas e tamanhos corretos depois de inserções e remoções aleatórias
-- [ ] 10. Carga dos dados: `fetchAllProphecies()` paginado no Supabase e profecias de demonstração para uso offline
-- [ ] 11. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias novas
-- [ ] 12. Autocomplete na aba "Buscar"
-- [ ] 13. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
-- [ ] 14. Visualizador da árvore, com altura, fator de balanceamento e rotações
-- [ ] 15. Benchmark: AVL × busca sequencial × array ordenado, para n = 10³, 10⁴ e 10⁵
-- [ ] 16. README final com os resultados do benchmark, screenshots e roteiro da apresentação
+- [ ] 9. Dados locais: profecias de exemplo em `src/data/profeciasLocais.js`, sem Supabase
+- [ ] 10. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias registradas na aba "Gerar"
+- [ ] 11. Autocomplete na aba "Buscar"
+- [ ] 12. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
+- [ ] 13. Visualizador da árvore, com altura, fator de balanceamento e rotações
+- [ ] 14. Benchmark: AVL × busca sequencial × array ordenado, para n = 10³, 10⁴ e 10⁵
+- [ ] 15. README final com os resultados do benchmark e o vídeo da apresentação no YouTube
 
 ### Arquivos previstos
 
@@ -149,8 +149,7 @@ src/lib/arvore/ArvoreAVL.js        # a árvore (JS puro, sem React)
 src/lib/arvore/normalizarChave.js  # minúsculas, sem acento, sem espaços nas pontas
 src/hooks/useIndiceProfecias.js    # carrega as profecias e monta a árvore
 src/components/profecias/          # autocomplete, arquivo e visualizador
-src/data/profeciasDemo.js          # profecias de demonstração (offline)
-tests/arvoreAVL.test.js            # testes das invariantes
+src/data/profeciasLocais.js        # profecias de exemplo (tudo local)
 scripts/benchmark-arvore.js        # comparação de desempenho
 ```
 
@@ -159,12 +158,11 @@ scripts/benchmark-arvore.js        # comparação de desempenho
 ```bash
 npm install
 npm run dev     # servidor de desenvolvimento (Vite)
-npm test        # testes da árvore (disponível a partir da tarefa 9)
 ```
 
-Para ligar o Supabase, crie um `.env.local` na raiz com `VITE_SUPABASE_URL` e
-`VITE_SUPABASE_ANON_KEY` (detalhes em [docs/README-FDDQuiz.md](docs/README-FDDQuiz.md)).
-Sem ele, o site funciona normalmente, só sem gravar nem consultar o banco.
+Não precisa de `.env.local` nem de Supabase: a funcionalidade da árvore roda
+toda localmente. O resto do site se comporta como no original e, sem
+`.env.local`, só avisa no console que o banco está desligado.
 
 ## Licença
 
