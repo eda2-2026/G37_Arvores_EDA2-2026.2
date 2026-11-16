@@ -5,8 +5,9 @@ import LaurelDivider from '../components/LaurelDivider';
 import { GODS } from '../data/gods';
 import { ORGANIZATIONS } from '../data/orgs';
 import { gerarProfecia } from '../lib/prophecyTemplate';
-import { insertProphecy, fetchProphecyByUsername } from '../lib/supabaseClient';
+import { fetchProphecyByUsername } from '../lib/supabaseClient';
 import { staggerContainer, fadeUp } from '../lib/motionVariants';
+import { useIndiceProfecias } from '../hooks/useIndiceProfecias';
 
 const inputClass =
   'w-full rounded-xl border-2 border-fdd-gold-dark/40 bg-fdd-cream/90 px-4 py-2 text-sm text-fdd-ink placeholder:text-fdd-ink/40 focus:border-fdd-gold focus:outline-none';
@@ -55,49 +56,43 @@ function ProfeciaDestaque({ nomeExibicao, textoProfecia }) {
   );
 }
 
-function GerarProfecia() {
+function GerarProfecia({ indice }) {
   const [username, setUsername] = useState('');
   const [nomeExibicao, setNomeExibicao] = useState('');
   const [parenteDivino, setParenteDivino] = useState(GODS[0].id);
   const [organizacao, setOrganizacao] = useState(ORGANIZATIONS[0].id);
-  const [submitting, setSubmitting] = useState(false);
   const [erro, setErro] = useState(null);
   const [resultado, setResultado] = useState(null);
 
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault();
-    if (!username.trim() || !nomeExibicao.trim()) {
+    const user = username.trim();
+    const nome = nomeExibicao.trim();
+    if (!user || !nome) {
       setErro('Preencha o username e o nome de exibição.');
       return;
     }
 
-    const nome = nomeExibicao.trim();
+    // O registro é local: a profecia entra no índice (árvore AVL) em memória,
+    // e a própria busca na árvore garante que o username é único.
+    if (indice.existe(user)) {
+      setResultado(null);
+      setErro('Já existe uma profecia registrada com esse nome de usuário! Use a aba Buscar.');
+      return;
+    }
+
     const textoProfecia = gerarProfecia({ nomeExibicao: nome, parenteDivino, organizacao });
-
-    setErro(null);
-    setSubmitting(true);
-    // Otimista: o texto já foi gerado localmente, então mostra na hora em vez
-    // de esperar o round-trip do Supabase — o insert acontece em paralelo.
-    setResultado({ nome_exibicao: nome, texto_profecia: textoProfecia });
-
-    const { error } = await insertProphecy({
-      username: username.trim(),
-      nomeExibicao: nome,
-      parenteDivino,
+    indice.adicionarProfecia({
+      username: user,
+      nome_exibicao: nome,
+      parente_divino: parenteDivino,
       organizacao,
-      textoProfecia,
+      texto_profecia: textoProfecia,
+      created_at: new Date().toISOString(),
     });
 
-    setSubmitting(false);
-
-    if (error) {
-      setResultado(null);
-      if (error.code === '23505') {
-        setErro('Já existe uma profecia registrada com esse nome de usuário! Use a aba Buscar.');
-      } else {
-        setErro('Não foi possível consultar as Moiras agora. Tente novamente em instantes.');
-      }
-    }
+    setErro(null);
+    setResultado({ nome_exibicao: nome, texto_profecia: textoProfecia });
   }
 
   return (
@@ -175,10 +170,9 @@ function GerarProfecia() {
 
             <button
               type="submit"
-              disabled={submitting}
-              className="mt-2 inline-flex items-center justify-center rounded-full border-2 border-fdd-gold-dark bg-fdd-gold px-6 py-2 font-display text-sm tracking-wide text-fdd-ink transition hover:bg-fdd-gold-light disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 inline-flex items-center justify-center rounded-full border-2 border-fdd-gold-dark bg-fdd-gold px-6 py-2 font-display text-sm tracking-wide text-fdd-ink transition hover:bg-fdd-gold-light"
             >
-              {submitting ? 'Consultando as Moiras...' : 'Consultar as Moiras'}
+              Consultar as Moiras
             </button>
           </form>
         </CardShell>
@@ -259,6 +253,8 @@ function BuscarProfecia() {
 
 export default function Profecias() {
   const [modo, setModo] = useState('gerar');
+  // Fica na página (e não em cada aba) para a árvore sobreviver à troca de abas.
+  const indice = useIndiceProfecias();
 
   return (
     <motion.div
@@ -285,7 +281,7 @@ export default function Profecias() {
         </ModeTab>
       </motion.div>
 
-      {modo === 'gerar' ? <GerarProfecia /> : <BuscarProfecia />}
+      {modo === 'gerar' ? <GerarProfecia indice={indice} /> : <BuscarProfecia />}
     </motion.div>
   );
 }

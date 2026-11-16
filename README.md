@@ -136,7 +136,7 @@ Cada tarefa corresponde a um commit. As marcadas já foram feitas.
 - [x] 7. Remoção com rebalanceamento
 - [x] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
 - [x] 9. Dados locais: profecias de exemplo em `src/data/profeciasLocais.js`, sem Supabase
-- [ ] 10. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias registradas na aba "Gerar"
+- [x] 10. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias registradas na aba "Gerar"
 - [ ] 11. Autocomplete na aba "Buscar"
 - [ ] 12. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
 - [ ] 13. Visualizador da árvore, com altura, fator de balanceamento e rotações
