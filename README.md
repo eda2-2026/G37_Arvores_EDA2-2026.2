@@ -85,9 +85,9 @@ melhorias para a página `/profecias`:
 3. **Atualização na hora.** Quando alguém registra uma profecia na aba "Gerar",
    ela é inserida na árvore e já aparece no arquivo e no autocomplete, sem
    recarregar a página.
-4. **Visualizador da árvore.** Desenha a árvore atual com a altura e o fator de
-   balanceamento de cada nó e destaca as rotações feitas na última inserção.
-   É a parte didática, usada na apresentação.
+4. **Visualizador da árvore.** Na aba "Árvore", desenha a árvore atual com a
+   altura e o fator de balanceamento de cada nó e destaca as rotações feitas na
+   última inserção. É a parte didática, usada na apresentação.
 
 **De onde vêm os dados.** Tudo roda localmente, sem Supabase. Ao abrir
 `/profecias`, a árvore é montada a partir de profecias de exemplo guardadas no
@@ -125,7 +125,7 @@ está no escopo por fazer parte do tipo abstrato.
 
 ## Escopo
 
-Cada tarefa corresponde a um commit. As marcadas já foram feitas.
+Cada tarefa corresponde a um ou mais commits. Todas foram feitas.
 
 - [x] 1. Commit inicial do repositório
 - [x] 2. Importação do FDDQuiz (cópia do commit `0d33691`)
@@ -137,28 +137,106 @@ Cada tarefa corresponde a um commit. As marcadas já foram feitas.
 - [x] 8. Consultas ordenadas: prefixo, k-ésimo, posição, antecessor e sucessor
 - [x] 9. Dados locais: profecias de exemplo em `src/data/profeciasLocais.js`, sem Supabase
 - [x] 10. Hook `useIndiceProfecias`, que monta a árvore ao abrir a página e insere as profecias registradas na aba "Gerar"
-- [ ] 11. Autocomplete na aba "Buscar"
-- [ ] 12. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
-- [ ] 13. Visualizador da árvore, com altura, fator de balanceamento e rotações
-- [ ] 14. Benchmark: AVL × busca sequencial × array ordenado, para n = 10³, 10⁴ e 10⁵
-- [ ] 15. README final com os resultados do benchmark e o vídeo da apresentação no YouTube
+- [x] 11. Autocomplete na aba "Buscar"
+- [x] 12. Aba "Arquivo": listagem alfabética paginada, com navegação anterior/próxima
+- [x] 13. Visualizador da árvore, com altura, fator de balanceamento e rotações
+- [x] 14. Benchmark: AVL × busca sequencial × array ordenado, para n = 10³, 10⁴ e 10⁵
+- [x] 15. README final com os resultados do benchmark e o vídeo da apresentação no YouTube
 
-### Arquivos previstos
+### Arquivos
 
 ```
-src/lib/arvore/ArvoreAVL.js        # a árvore (JS puro, sem React)
-src/lib/arvore/normalizarChave.js  # minúsculas, sem acento, sem espaços nas pontas
-src/hooks/useIndiceProfecias.js    # carrega as profecias e monta a árvore
-src/components/profecias/          # autocomplete, arquivo e visualizador
-src/data/profeciasLocais.js        # profecias de exemplo (tudo local)
-scripts/benchmark-arvore.js        # comparação de desempenho
+src/lib/arvore/ArvoreAVL.js                     # a árvore (JS puro, sem React)
+src/lib/arvore/normalizarChave.js               # minúsculas, sem acento, sem espaços nas pontas
+src/hooks/useIndiceProfecias.js                 # monta a árvore e registra a última inserção
+src/data/profeciasLocais.js                     # profecias de exemplo (tudo local)
+src/components/profecias/BuscaProfecia.jsx      # aba Buscar, com autocomplete
+src/components/profecias/ArquivoProfecias.jsx   # aba Arquivo, paginada
+src/components/profecias/VisualizadorArvore.jsx # aba Árvore, o desenho da AVL
+src/components/profecias/ui.jsx, nomes.js       # peças visuais e nomes compartilhados
+src/pages/Profecias.jsx                         # a página, com as quatro abas
+scripts/benchmark-arvore.js                     # comparação de desempenho
 ```
+
+## Benchmark
+
+`npm run benchmark` compara três formas de guardar os usernames, com as mesmas
+operações que a página usa:
+
+- **Busca sequencial:** um array na ordem de chegada. Inserir é um `push`;
+  todo o resto percorre o array inteiro, e o que depende de ordem precisa
+  ordenar a cada consulta.
+- **Array ordenado:** busca binária para achar a posição, e `splice` para
+  inserir, que desloca os elementos seguintes.
+- **Árvore AVL:** a de `src/lib/arvore/ArvoreAVL.js`.
+
+Os usernames são strings aleatórias de 4 a 12 letras, geradas com semente fixa,
+então toda execução usa os mesmos dados. A busca exata mistura 500 usernames que
+existem e 500 que não existem; o autocomplete usa as duas primeiras letras de um
+username existente; a página do arquivo começa numa posição k sorteada. Antes
+de imprimir, o script confere se as três estruturas devolveram os mesmos
+resultados.
+
+Resultados numa execução com Node v24 no Windows (os tempos variam de máquina
+para máquina, mas as proporções se mantêm):
+
+**n = 1.000** (altura da AVL: 12)
+
+| Operação | Busca sequencial | Array ordenado | Árvore AVL |
+|---|---:|---:|---:|
+| Inserir as n chaves, uma por vez (total) | 0,11 ms | 0,61 ms | 1,85 ms |
+| Busca exata (por consulta) | 2,14 µs | 0,29 µs | 0,48 µs |
+| Autocomplete: prefixo, até 8 (por consulta) | 8,75 µs | 0,52 µs | 3,12 µs |
+| Página do arquivo: 8 itens a partir de k (por consulta) | 134 µs | 0,28 µs | 1,45 µs |
+
+**n = 10.000** (altura da AVL: 16)
+
+| Operação | Busca sequencial | Array ordenado | Árvore AVL |
+|---|---:|---:|---:|
+| Inserir as n chaves, uma por vez (total) | 0,49 ms | 5,5 ms | 5,92 ms |
+| Busca exata (por consulta) | 18 µs | 0,37 µs | 0,46 µs |
+| Autocomplete: prefixo, até 8 (por consulta) | 37 µs | 0,28 µs | 1,21 µs |
+| Página do arquivo: 8 itens a partir de k (por consulta) | 1,9 ms | 0,08 µs | 1,05 µs |
+
+**n = 100.000** (altura da AVL: 20)
+
+| Operação | Busca sequencial | Array ordenado | Árvore AVL |
+|---|---:|---:|---:|
+| Inserir as n chaves, uma por vez (total) | 4,75 ms | 341 ms | 73 ms |
+| Busca exata (por consulta) | 178 µs | 0,51 µs | 0,81 µs |
+| Autocomplete: prefixo, até 8 (por consulta) | 342 µs | 0,63 µs | 2,28 µs |
+| Página do arquivo: 8 itens a partir de k (por consulta) | 54,4 ms | 0,4 µs | 3,95 µs |
+
+**O que os números mostram**
+
+- **Busca sequencial:** só ganha na inserção, que é um `push`. A busca exata
+  cresce junto com n (2 µs, 18 µs, 178 µs), e a página do arquivo precisa
+  ordenar tudo a cada consulta: 54 ms com 10⁵ profecias.
+- **Array ordenado:** é o mais rápido nas leituras, porque a busca binária e o
+  `slice` trabalham em memória contígua. O custo aparece na inserção: cada
+  chave nova desloca, em média, metade do array. De 10⁴ para 10⁵ chaves, o
+  tempo para montar o índice subiu 62 vezes (5,5 ms para 341 ms), enquanto o
+  da AVL subiu 12 vezes (5,9 ms para 73 ms).
+- **Árvore AVL:** nas leituras fica alguns microssegundos atrás do array
+  ordenado, porque segue ponteiros em vez de índices, mas quase não piora com
+  n: a busca exata foi de 0,48 µs para 0,81 µs com 100 vezes mais dados. A
+  altura medida (12, 16 e 20) ficou sempre abaixo do limite teórico da AVL
+  (cerca de 1,44·log₂ n, isto é, 14, 19 e 24).
+
+Para o site, a AVL é o meio-termo certo: as consultas custam microssegundos e
+continuam baratas com o crescimento, e registrar uma profecia nova não exige
+mover nenhum elemento.
+
+## Apresentação
+
+Vídeo da apresentação no YouTube: [assistir](https://youtu.be/HGqc_M8NboU)
 
 ## Como rodar
 
 ```bash
 npm install
-npm run dev     # servidor de desenvolvimento (Vite)
+npm run dev        # servidor de desenvolvimento (Vite); a página é /profecias
+npm run benchmark  # benchmark AVL × busca sequencial × array ordenado
 ```
 
 Não precisa de `.env.local` nem de Supabase: a funcionalidade da árvore roda
